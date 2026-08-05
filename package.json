@@ -10,6 +10,14 @@
     "engineering",
     "calculus"
   ],
+  "homepage": "https://github.com/sunaissu/calculator#readme",
+  "bugs": {
+    "url": "https://github.com/sunaissu/calculator/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/sunaissu/calculator.git"
+  },
   "license": "MIT",
   "author": "sunaissu",
   "type": "commonjs",
@@ -31,7 +39,7 @@
     "LICENSE"
   ],
   "scripts": {
-    "build": "tsup src/index.tsx --format cjs,esm --dts --clean",
+    "build": "tsup ./src/index.tsx --format cjs,esm --dts --clean",
     "check": "tsc -p tsconfig.json --noEmit",
     "test": "npm run build && node test/smoke.cjs",
     "playground": "npm --prefix playground run dev",
@@ -55,6 +63,9 @@
   },
   "engines": {
     "node": ">=18"
+  },
+  "overrides": {
+    "esbuild": "0.28.1"
   },
   "sideEffects": [
     "*.css"
