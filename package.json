@@ -1,6 +1,6 @@
 {
   "name": "@sunaissu/calculator",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "A safe engineering calculator for React with document and canvas insertion adapters.",
   "keywords": [
     "react",
