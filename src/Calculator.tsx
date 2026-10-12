@@ -1,11 +1,14 @@
-import React, { useMemo, useState } from "react";
+import React, { useId, useMemo, useState } from "react";
 import {
   type AngleUnit,
+  type ResultFormat,
+  evaluateVariables,
   type EvaluationContext,
   differentiateExpression,
   evaluateExpression,
   formatCalculatorResult,
   integrateExpression,
+  solveEquation,
 } from "./engine";
 import {
   type CalculationKind,
@@ -29,10 +32,12 @@ import {
 } from "./theme";
 
 type CalculatorMode = "standard" | "engineering";
-type CalculusOperation = "integral" | "derivative";
+type CalculusOperation = "integral" | "derivative" | "root";
 
 interface HistoryItem extends CalculationResult {
   input?: string;
+  variableSource: string;
+  previousAnswer: number | null;
 }
 
 interface CalculatorKey {
@@ -48,6 +53,8 @@ interface CommonCalculatorProps {
   defaultMode?: CalculatorMode;
   defaultAngleUnit?: AngleUnit;
   maxHistory?: number;
+  defaultVariables?: string;
+  defaultFormat?: ResultFormat;
   title?: string;
   /** Light, dark, or the user's operating-system preference. */
   theme?: CalculatorThemeMode;
@@ -181,6 +188,11 @@ export const Calculator: React.FC<CalculatorProps> = (props) => {
     }),
     [brandColors, resolvedThemeMode, themeOverrides],
   );
+  const calculusHeadingId = useId();
+  const [variableSource, setVariableSource] = useState(props.defaultVariables ?? "");
+  const [resultFormat, setResultFormat] = useState<ResultFormat>(props.defaultFormat ?? {});
+  const [memory, setMemory] = useState<number | null>(null);
+  const [copyStatus, setCopyStatus] = useState("");
   const [mode, setMode] = useState<CalculatorMode>(defaultMode);
   const [angleUnit, setAngleUnit] = useState<AngleUnit>(defaultAngleUnit);
   const [expression, setExpression] = useState("");
@@ -193,18 +205,32 @@ export const Calculator: React.FC<CalculatorProps> = (props) => {
   const [lowerBound, setLowerBound] = useState("0");
   const [upperBound, setUpperBound] = useState("pi");
   const [derivativePoint, setDerivativePoint] = useState("0");
+  const [solverTolerance, setSolverTolerance] = useState("0.00000001");
   const [calculusSummary, setCalculusSummary] = useState("");
 
   const formattedExpression = useMemo(() => formatDisplayExpression(expression), [expression]);
-  const evaluationContext: EvaluationContext = {
-    angleUnit,
-    variables: answer === null ? {} : { ans: answer },
+  const evaluationContext = (): EvaluationContext => ({ angleUnit, variables: evaluateVariables(variableSource, { angleUnit, variables: answer === null ? {} : { ans: answer } }) });
+  const displayedResult = currentResult ? formatCalculatorResult(currentResult.numericValue, resultFormat) : "0";
+  const copyResult = async (full: boolean) => {
+    if (!currentResult) return;
+    try {
+      await navigator.clipboard.writeText(full ? currentResult.displayExpression + " = " + displayedResult : displayedResult);
+      setCopyStatus("Copied");
+    } catch { setCopyStatus("Copy unavailable. Select the result to copy it."); }
+  };
+  const updateMemory = (sign: number) => {
+    try {
+      const next = (memory ?? 0) + sign * (currentResult?.numericValue ?? evaluateExpression(expression, evaluationContext()));
+      if (!Number.isFinite(next)) throw new Error("Memory result is not finite");
+      setMemory(next); setError("");
+    } catch (error) { setError(error instanceof Error ? error.message : "Unable to store memory"); }
   };
 
   const clearPendingResult = () => {
     setCurrentResult(null);
     setError("");
     setCalculusSummary("");
+    setCopyStatus("");
   };
 
   const recordResult = (
@@ -213,31 +239,57 @@ export const Calculator: React.FC<CalculatorProps> = (props) => {
     displayExpression: string,
     kind: CalculationKind,
     input?: string,
+    diagnostics?: CalculationResult["diagnostics"],
   ) => {
     const result: CalculationResult = {
       kind,
       expression: resultExpression,
       displayExpression,
       numericValue,
-      value: formatCalculatorResult(numericValue),
+      value: formatCalculatorResult(numericValue, resultFormat),
+      context: { ...evaluationContext(), format: resultFormat, ...(kind === "integral" || kind === "root" ? { lowerBound, upperBound } : kind === "derivative" ? { point: derivativePoint } : {}), ...(kind === "root" ? { tolerance: Number(solverTolerance) } : {}) },
+      ...(diagnostics ? { diagnostics } : {}),
     };
     setCurrentResult(result);
     setAnswer(numericValue);
     setError("");
     setHistory((previous) => [
-      { ...result, input },
+      { ...result, input, variableSource, previousAnswer: answer },
       ...previous.filter(
         (item) => item.displayExpression !== result.displayExpression || item.value !== result.value,
       ),
-    ].slice(0, maxHistory));
+    ].slice(0, Math.max(0, Math.min(1000, Math.floor(maxHistory) || 0))));
     props.onResult?.(result);
     return result;
+  };
+
+  const restoreHistory = (item: HistoryItem) => {
+    setVariableSource(item.variableSource);
+    setAnswer(item.previousAnswer);
+    setAngleUnit(item.context?.angleUnit ?? "rad");
+    setResultFormat(item.context?.format ?? {});
+    setCurrentResult(item);
+    setError("");
+    setCopyStatus("");
+    if (item.kind === "expression") {
+      setExpression(item.input ?? item.expression);
+      setCalculusSummary("");
+    } else {
+      setMode("engineering");
+      setCalculusOperation(item.kind);
+      setFunctionExpression(item.expression);
+      setLowerBound(item.context?.lowerBound ?? "0");
+      setUpperBound(item.context?.upperBound ?? "pi");
+      setDerivativePoint(item.context?.point ?? "0");
+      setSolverTolerance(String(item.context?.tolerance ?? 1e-8));
+      setCalculusSummary(item.displayExpression + " = " + item.value);
+    }
   };
 
   const calculate = () => {
     try {
       recordResult(
-        evaluateExpression(expression, evaluationContext),
+        evaluateExpression(expression, evaluationContext()),
         expression,
         formattedExpression,
         "expression",
@@ -253,10 +305,15 @@ export const Calculator: React.FC<CalculatorProps> = (props) => {
   const calculateCalculus = () => {
     try {
       if (!functionExpression.trim()) throw new Error("Enter a function of x");
-      if (calculusOperation === "integral") {
+      if (calculusOperation === "root") {
+        const solution = solveEquation(functionExpression, lowerBound, upperBound, evaluationContext(), { tolerance: Number(solverTolerance) });
+        const display = `Root of ${functionExpression} = 0 in [${lowerBound}, ${upperBound}]`;
+        const result = recordResult(solution.value, functionExpression, display, "root", undefined, { residual: solution.residual, iterations: solution.iterations });
+        setCalculusSummary(`${display}: ${result.value}`);
+      } else if (calculusOperation === "integral") {
         const display = `∫[${lowerBound}, ${upperBound}] ${functionExpression} dx`;
         const result = recordResult(
-          integrateExpression(functionExpression, lowerBound, upperBound, evaluationContext),
+          integrateExpression(functionExpression, lowerBound, upperBound, evaluationContext()),
           functionExpression,
           display,
           "integral",
@@ -265,7 +322,7 @@ export const Calculator: React.FC<CalculatorProps> = (props) => {
       } else {
         const display = `d/dx ${functionExpression} at x=${derivativePoint}`;
         const result = recordResult(
-          differentiateExpression(functionExpression, derivativePoint, evaluationContext),
+          differentiateExpression(functionExpression, derivativePoint, evaluationContext()),
           functionExpression,
           display,
           "derivative",
@@ -300,15 +357,16 @@ export const Calculator: React.FC<CalculatorProps> = (props) => {
 
   const insertResult = () => {
     if (!currentResult || readOnly) return;
+    const formattedResult = { ...currentResult, value: displayedResult, context: { ...currentResult.context, format: resultFormat } };
     if (target === "document") {
       const documentProps = props as DocumentCalculatorProps;
       documentProps.onInsert?.(
-        createDocumentCalculationInsert(currentResult, documentProps.insertOptions),
+        createDocumentCalculationInsert(formattedResult, documentProps.insertOptions),
       );
     } else if (target === "canvas") {
       const canvasProps = props as CanvasCalculatorProps;
       canvasProps.onInsert?.(
-        createCanvasCalculationInsert(currentResult, canvasProps.insertOptions),
+        createCanvasCalculationInsert(formattedResult, canvasProps.insertOptions),
       );
     }
   };
@@ -385,31 +443,54 @@ export const Calculator: React.FC<CalculatorProps> = (props) => {
 
       <div className="calculator-display">
         <input value={formattedExpression} onChange={(event) => { setExpression(normalizeDisplayExpression(event.target.value)); clearPendingResult(); }} onKeyDown={(event) => { if (event.key === "Enter") calculate(); }} aria-label="Calculation expression" spellCheck={false} />
-        <output className={error ? "calculator-result is-error" : "calculator-result"}>{error || currentResult?.value || "0"}</output>
+        <output className={error ? "calculator-result is-error" : "calculator-result"}>{error || displayedResult}</output>
       </div>
+
+      <div className="calculator-utility-row" aria-label="Memory and clipboard">
+        <button type="button" onClick={() => setMemory(null)} disabled={memory === null} title="Clear memory">MC</button>
+        <button type="button" onClick={() => { setExpression(String(memory)); clearPendingResult(); }} disabled={memory === null} title="Recall memory">MR</button>
+        <button type="button" onClick={() => updateMemory(1)} title="Add to memory">M+</button>
+        <button type="button" onClick={() => updateMemory(-1)} title="Subtract from memory">M−</button>
+        <button type="button" disabled={!currentResult} onClick={() => void copyResult(false)}>Copy result</button>
+        <button type="button" disabled={!currentResult} onClick={() => void copyResult(true)}>Copy equation</button>
+      </div>
+      {copyStatus && <small role="status">{copyStatus}</small>}
+      <details className="calculator-options">
+        <summary>Variables & display{memory !== null ? " · Memory stored" : ""}</summary>
+        <label>Named variables<textarea rows={3} value={variableSource} placeholder={"length = 12\nwidth = length / 2"} onChange={event => { setVariableSource(event.target.value); clearPendingResult(); }} /></label>
+        <small>One name = expression per line. Later rows can use earlier variables.</small>
+        <div className="calculator-format-row">
+          <label>Notation<select value={resultFormat.notation ?? "auto"} onChange={event => setResultFormat({ ...resultFormat, notation: event.target.value as ResultFormat["notation"], precision: event.target.value === "significant" ? Math.max(1, resultFormat.precision ?? 6) : resultFormat.precision })}>
+            {(["auto", "fixed", "scientific", "engineering", "significant"] as const).map(value => <option key={value}>{value}</option>)}
+          </select></label>
+          <label>{resultFormat.notation === "significant" ? "Significant figures" : "Decimal places"}<input type="number" disabled={!resultFormat.notation || resultFormat.notation === "auto"} min={resultFormat.notation === "significant" ? 1 : 0} max={12} value={resultFormat.precision ?? 6} onChange={event => { const value = Number(event.target.value); if (Number.isInteger(value) && value >= (resultFormat.notation === "significant" ? 1 : 0) && value <= 12) setResultFormat({ ...resultFormat, precision: value }); }} /></label>
+        </div>
+      </details>
 
       {mode === "engineering" && <div className="calculator-engineering-keys" aria-label="Engineering functions">{engineeringKeys.map(renderKey)}</div>}
       <div className="calculator-keypad">{standardKeys.map(renderKey)}<button type="button" className="calculator-equals" onClick={calculate}>=</button></div>
 
       {mode === "engineering" && (
-        <section className="calculus-lab" aria-labelledby="sunaissu-calculus-heading">
-          <div className="calculus-heading"><div><strong id="sunaissu-calculus-heading">Numerical calculus</strong><span>Use <code>x</code> as the independent variable.</span></div><span className="calculus-method">Approx.</span></div>
-          <div className="calculus-operation-switch"><button type="button" className={calculusOperation === "integral" ? "is-active" : ""} onClick={() => { setCalculusOperation("integral"); setError(""); }}>∫ Integral</button><button type="button" className={calculusOperation === "derivative" ? "is-active" : ""} onClick={() => { setCalculusOperation("derivative"); setError(""); }}>d/dx Derivative</button></div>
-          <label className="calculus-field"><span>f(x)</span><input value={functionExpression} onChange={(event) => setFunctionExpression(event.target.value)} placeholder="e.g. x^2 + sin(x)" spellCheck={false} /></label>
-          {calculusOperation === "integral" ? (
-            <div className="calculus-bound-grid"><label className="calculus-field"><span>Lower bound</span><input value={lowerBound} onChange={(event) => setLowerBound(event.target.value)} spellCheck={false} /></label><label className="calculus-field"><span>Upper bound</span><input value={upperBound} onChange={(event) => setUpperBound(event.target.value)} spellCheck={false} /></label></div>
-          ) : <label className="calculus-field"><span>Evaluate at x</span><input value={derivativePoint} onChange={(event) => setDerivativePoint(event.target.value)} spellCheck={false} /></label>}
-          <button type="button" className="calculus-run" onClick={calculateCalculus}>{calculusOperation === "integral" ? "Evaluate definite integral" : "Evaluate derivative"}</button>
-          {calculusSummary && <output className="calculus-summary">{calculusSummary}</output>}
+        <section className="calculus-lab" aria-labelledby={calculusHeadingId}>
+          <div className="calculus-heading"><div><strong id={calculusHeadingId}>Numerical tools</strong><span>Use <code>x</code> as the independent variable.</span></div><span className="calculus-method">Approx.</span></div>
+          <div className="calculus-operation-switch"><button type="button" className={calculusOperation === "integral" ? "is-active" : ""} onClick={() => { setCalculusOperation("integral"); clearPendingResult(); }}>∫ Integral</button><button type="button" className={calculusOperation === "derivative" ? "is-active" : ""} onClick={() => { setCalculusOperation("derivative"); clearPendingResult(); }}>d/dx Derivative</button><button type="button" className={calculusOperation === "root" ? "is-active" : ""} onClick={() => { setCalculusOperation("root"); clearPendingResult(); }}>Solve f(x) = 0</button></div>
+          <label className="calculus-field"><span>f(x)</span><input value={functionExpression} onChange={(event) => { setFunctionExpression(event.target.value); clearPendingResult(); }} placeholder="e.g. x^2 + sin(x)" spellCheck={false} /></label>
+          {calculusOperation !== "derivative" ? (
+            <div className="calculus-bound-grid"><label className="calculus-field"><span>Lower bound</span><input value={lowerBound} onChange={(event) => { setLowerBound(event.target.value); clearPendingResult(); }} spellCheck={false} /></label><label className="calculus-field"><span>Upper bound</span><input value={upperBound} onChange={(event) => { setUpperBound(event.target.value); clearPendingResult(); }} spellCheck={false} /></label></div>
+          ) : <label className="calculus-field"><span>Evaluate at x</span><input value={derivativePoint} onChange={(event) => { setDerivativePoint(event.target.value); clearPendingResult(); }} spellCheck={false} /></label>}
+          {calculusOperation === "root" && <label className="calculus-field"><span>Residual tolerance</span><input type="number" min="0" max="1" step="any" value={solverTolerance} onChange={event => { setSolverTolerance(event.target.value); clearPendingResult(); }} /><small>Finds one root of a continuous function between sign-changing bounds.</small></label>}
+          <button type="button" className="calculus-run" onClick={calculateCalculus}>{calculusOperation === "root" ? "Solve equation" : calculusOperation === "integral" ? "Evaluate definite integral" : "Evaluate derivative"}</button>
+          {calculusSummary && currentResult && <output className="calculus-summary">{currentResult.displayExpression} = {displayedResult}</output>}
         </section>
       )}
 
+      {currentResult?.diagnostics && <small role="status">Residual: {currentResult.diagnostics.residual.toExponential(2)} · {currentResult.diagnostics.iterations} iterations</small>}
       {target !== "standalone" && <button type="button" className="calculator-insert" onClick={insertResult} disabled={!canInsert}>↳ {insertLabel}</button>}
 
       {history.length > 0 && (
         <div className="calculator-history">
           <div className="calculator-history-header"><div className="calculator-history-label">↺ Recent</div><button type="button" className="calculator-history-clear" onClick={() => setHistory([])}>Clear</button></div>
-          {history.map((item, index) => <button type="button" key={`${item.displayExpression}-${item.value}-${index}`} onClick={() => { if (item.input !== undefined) setExpression(item.input); setCurrentResult(item); setAnswer(item.numericValue); setError(""); }} title={item.displayExpression}><span>{item.displayExpression}</span><strong>{item.value}</strong></button>)}
+          {history.map((item, index) => <button type="button" key={`${item.displayExpression}-${item.value}-${index}`} onClick={() => restoreHistory(item)} title={item.displayExpression}><span>{item.displayExpression}</span><strong>{item.value}</strong></button>)}
         </div>
       )}
     </section>

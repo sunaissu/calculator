@@ -10,6 +10,11 @@ type Token = { type: "number" | "name" | "operator"; value: string };
 const MAX_EXPRESSION_LENGTH = 500;
 const MAX_FACTORIAL = 170;
 
+function finite(value: number): number {
+  if (!Number.isFinite(value)) throw new Error("Result is not finite");
+  return value;
+}
+
 function tokenize(rawExpression: string): Token[] {
   if (rawExpression.length > MAX_EXPRESSION_LENGTH) {
     throw new Error("Expression is too long");
@@ -33,12 +38,13 @@ function tokenize(rawExpression: string): Token[] {
 
     const number = remaining.match(/^(?:\d+\.?\d*|\.\d+)(?:e[+-]?\d+)?/i);
     if (number) {
+      if (tokens[tokens.length - 1]?.type === "number") throw new Error("Numbers need an operator between them");
       tokens.push({ type: "number", value: number[0] });
       cursor += number[0].length;
       continue;
     }
 
-    const name = remaining.match(/^[a-z]+/i);
+    const name = remaining.match(/^[a-z][a-z0-9_]*/i);
     if (name) {
       tokens.push({ type: "name", value: name[0].toLowerCase() });
       cursor += name[0].length;
@@ -73,7 +79,10 @@ export function evaluateExpression(
   expression: string,
   context: EvaluationContext = {},
 ): number {
-  const tokens = tokenize(expression);
+  return evaluateTokens(tokenize(expression), context);
+}
+
+function evaluateTokens(tokens: Token[], context: EvaluationContext): number {
   const angleUnit = context.angleUnit ?? "rad";
   const variables = context.variables ?? {};
   const toRadians = (value: number) =>
@@ -111,7 +120,7 @@ export function evaluateExpression(
   const parsePrimary = (): number => {
     const token = take();
     if (!token) throw new Error("Incomplete expression");
-    if (token.type === "number") return Number(token.value);
+    if (token.type === "number") return finite(Number(token.value));
 
     if (token.type === "name") {
       const constants: Record<string, number> = {
@@ -120,8 +129,8 @@ export function evaluateExpression(
         tau: Math.PI * 2,
         phi: (1 + Math.sqrt(5)) / 2,
       };
-      if (token.value in constants) return constants[token.value];
-      if (token.value in variables) {
+      if (Object.prototype.hasOwnProperty.call(constants, token.value)) return constants[token.value];
+      if (Object.prototype.hasOwnProperty.call(variables, token.value)) {
         const variable = variables[token.value];
         if (!Number.isFinite(variable)) {
           throw new Error(`Variable "${token.value}" is not finite`);
@@ -129,13 +138,13 @@ export function evaluateExpression(
         return variable;
       }
 
-      const fn = functions[token.value];
+      const fn = Object.prototype.hasOwnProperty.call(functions, token.value) ? functions[token.value] : undefined;
       if (!fn) throw new Error(`Unknown function or variable "${token.value}"`);
       if (peek()?.value !== "(") throw new Error("Functions need parentheses");
       take();
       const value = parseExpression();
       if (take()?.value !== ")") throw new Error("Missing closing parenthesis");
-      return fn(value);
+      return finite(fn(value));
     }
 
     if (token.value === "(") {
@@ -158,7 +167,7 @@ export function evaluateExpression(
     const base = parsePostfix();
     if (peek()?.value === "^") {
       take();
-      return Math.pow(base, parseUnary());
+      return finite(Math.pow(base, parseUnary()));
     }
     return base;
   };
@@ -185,12 +194,12 @@ export function evaluateExpression(
       if (operator === "*" || operator === "/") {
         take();
         const right = parseUnary();
-        value = operator === "*" ? value * right : value / right;
+        value = finite(operator === "*" ? value * right : value / right);
       } else if (peek().type === "name" && peek().value === "mod") {
         take();
-        value %= parseUnary();
+        value = finite(value % parseUnary());
       } else if (beginsPrimary(peek())) {
-        value *= parseUnary();
+        value = finite(value * parseUnary());
       } else {
         break;
       }
@@ -203,7 +212,7 @@ export function evaluateExpression(
     while (peek()?.value === "+" || peek()?.value === "-") {
       const operator = take().value;
       const right = parseTerm();
-      value = operator === "+" ? value + right : value - right;
+      value = finite(operator === "+" ? value + right : value - right);
     }
     return value;
   };
@@ -215,8 +224,72 @@ export function evaluateExpression(
   return result;
 }
 
-export function formatCalculatorResult(value: number): string {
+export interface ResultFormat {
+  notation?: "auto" | "fixed" | "scientific" | "engineering" | "significant";
+  precision?: number;
+}
+
+export interface EquationSolverOptions {
+  /** Absolute residual tolerance for f(x), not a guarantee about x. */
+  tolerance?: number;
+  maxIterations?: number;
+}
+
+export interface EquationSolution {
+  value: number;
+  residual: number;
+  iterations: number;
+}
+
+/** Find one root of a continuous real function in a sign-changing bracket. */
+export function solveEquation(
+  expression: string,
+  lowerExpression: string,
+  upperExpression: string,
+  context: EvaluationContext = {},
+  options: EquationSolverOptions = {},
+): EquationSolution {
+  const tolerance = options.tolerance ?? 1e-8;
+  const limit = options.maxIterations ?? 100;
+  if (!Number.isFinite(tolerance) || tolerance <= 0 || tolerance > 1) throw new Error("Tolerance must be greater than 0 and at most 1");
+  if (!Number.isInteger(limit) || limit < 1 || limit > 1000) throw new Error("Iteration limit must be an integer from 1 to 1000");
+  let lower = evaluateExpression(lowerExpression, context), upper = evaluateExpression(upperExpression, context);
+  if (lower >= upper) throw new Error("Lower bound must be less than upper bound");
+  const tokens = tokenize(expression);
+  const at = (x: number) => evaluateTokens(tokens, { ...context, variables: { ...context.variables, x } });
+  let left = at(lower);
+  if (Math.abs(left) <= tolerance) return { value: lower, residual: left, iterations: 0 };
+  const right = at(upper);
+  if (Math.abs(right) <= tolerance) return { value: upper, residual: right, iterations: 0 };
+  if (Math.sign(left) === Math.sign(right)) throw new Error("Choose bounds where f(x) changes sign");
+  for (let iterations = 1; iterations <= limit; iterations++) {
+    const middle = lower / 2 + upper / 2;
+    if (middle === lower || middle === upper) break;
+    const residual = at(middle);
+    if (Math.abs(residual) <= tolerance) return { value: middle, residual, iterations };
+    if (Math.sign(residual) === Math.sign(left)) { lower = middle; left = residual; }
+    else upper = middle;
+  }
+  throw new Error("Solver did not converge. Check continuity, bounds, and tolerance");
+}
+
+export function formatCalculatorResult(value: number, options: ResultFormat = {}): string {
   if (!Number.isFinite(value)) throw new Error("Result is not finite");
+  const precision = options.precision ?? 6;
+  if (!Number.isInteger(precision) || precision < 0 || precision > 12) throw new Error("Precision must be an integer from 0 to 12");
+  if (options.notation === "significant") {
+    if (precision < 1) throw new Error("Precision must be an integer from 1 to 12 for significant figures");
+    return value.toPrecision(precision);
+  }
+  if (options.notation === "fixed") return value.toFixed(precision);
+  if (options.notation === "scientific") return value.toExponential(precision);
+  if (options.notation === "engineering") {
+    const exponent = value === 0 ? 0 : Math.floor(Math.log10(Math.abs(value)) / 3) * 3;
+    const mantissa = value / 10 ** exponent;
+    if (!Number.isFinite(mantissa)) return value.toExponential(precision);
+    const rounded = Number(mantissa.toFixed(precision));
+    return Math.abs(rounded) >= 1000 ? (rounded / 1000).toFixed(precision) + "e" + (exponent + 3) : rounded.toFixed(precision) + "e" + exponent;
+  }
   if (Math.abs(value) >= 1e12 || (Math.abs(value) > 0 && Math.abs(value) < 1e-8)) {
     return value.toExponential(8).replace(/\.0+e/, "e");
   }
@@ -232,16 +305,17 @@ export function integrateExpression(
 ): number {
   const lowerBound = evaluateExpression(lowerBoundExpression, context);
   const upperBound = evaluateExpression(upperBoundExpression, context);
-  if (lowerBound === upperBound) return 0;
 
+  const tokens = tokenize(expression);
   const intervals = 600;
   const step = (upperBound - lowerBound) / intervals;
   const evaluateAt = (x: number) =>
-    evaluateExpression(expression, {
+    evaluateTokens(tokens, {
       ...context,
       variables: { ...context.variables, x },
     });
 
+  if (lowerBound === upperBound) { evaluateAt(lowerBound); return 0; }
   let weightedSum = evaluateAt(lowerBound) + evaluateAt(upperBound);
   for (let index = 1; index < intervals; index += 1) {
     weightedSum += (index % 2 === 0 ? 2 : 4) * evaluateAt(lowerBound + index * step);
@@ -257,13 +331,16 @@ export function differentiateExpression(
   pointExpression: string,
   context: EvaluationContext = {},
 ): number {
+  const tokens = tokenize(expression);
   const point = evaluateExpression(pointExpression, context);
   const step = Math.max(1e-5, Math.abs(point) * 1e-5);
   const evaluateAt = (x: number) =>
-    evaluateExpression(expression, {
+    evaluateTokens(tokens, {
       ...context,
       variables: { ...context.variables, x },
     });
+  // A symmetric stencil alone can hide an undefined value at the evaluation point.
+  evaluateAt(point);
   const result =
     (-evaluateAt(point + 2 * step) +
       8 * evaluateAt(point + step) -
@@ -272,4 +349,19 @@ export function differentiateExpression(
     (12 * step);
   if (!Number.isFinite(result)) throw new Error("Derivative is not finite");
   return result;
+}
+
+/** Variables are evaluated in order, allowing later rows to reference earlier rows. */
+export function evaluateVariables(source: string, context: EvaluationContext = {}): Record<string, number> {
+  const variables = { ...context.variables };
+  const lines = source.split(/\r?\n/).filter(line => line.trim());
+  if (lines.length > 50) throw new Error("Use at most 50 named variables");
+  for (const line of lines) {
+    const match = line.match(/^\s*([a-z][a-z0-9_]*)\s*=\s*(.+)$/i);
+    if (!match) throw new Error('Write each variable as name = expression');
+    const name = match[1].toLowerCase();
+    if (/^(ans|pi|e|tau|phi|mod|sqrt|cbrt|abs|exp|ln|log|floor|ceil|round|sin|cos|tan|asin|acos|atan|sinh|cosh|tanh)$/.test(name)) throw new Error('Reserved variable name: ' + name);
+    variables[name] = evaluateExpression(match[2], { ...context, variables });
+  }
+  return variables;
 }

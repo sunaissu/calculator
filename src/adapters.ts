@@ -1,4 +1,6 @@
-export type CalculationKind = "expression" | "integral" | "derivative";
+import type { EvaluationContext, ResultFormat } from "./engine";
+
+export type CalculationKind = "expression" | "integral" | "derivative" | "root";
 
 export interface CalculationResult {
   kind: CalculationKind;
@@ -6,6 +8,9 @@ export interface CalculationResult {
   displayExpression: string;
   numericValue: number;
   value: string;
+  /** Inputs needed to reopen this calculation in a host application. */
+  context?: EvaluationContext & { format?: ResultFormat; lowerBound?: string; upperBound?: string; point?: string; tolerance?: number };
+  diagnostics?: { residual: number; iterations: number };
 }
 
 export interface DocumentCalculationInsert extends CalculationResult {
@@ -39,6 +44,8 @@ export interface CanvasInsertOptions {
   includeExpression?: boolean;
 }
 
+const markdownText = (value: string) => value.replace(/\r\n?|\n/g, " ").replace(/([\\\x60*_[\]<>~#+.!|{}()&-])/g, "\\$1");
+
 export function createDocumentCalculationInsert(
   result: CalculationResult,
   options: DocumentInsertOptions = {},
@@ -51,7 +58,7 @@ export function createDocumentCalculationInsert(
     ...result,
     target: "document",
     text: result.value,
-    markdown: `**${label}:** ${equation}`,
+    markdown: `**${markdownText(label)}:** ${markdownText(equation)}`,
   };
 }
 

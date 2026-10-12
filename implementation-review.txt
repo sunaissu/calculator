@@ -1,0 +1,140 @@
+Calculator implementation review
+11 October 2026
+
+Implemented a compact variable panel, result formatting, memory, copy controls, and richer result context. Fixed prototype-inherited variable lookup, ambiguous adjacent numeric tokens, stale calculus results when inputs/operation change, and duplicate calculus heading IDs. Automatic notation disables the unused decimal-place control; inserted results retain the displayed format in their metadata.
+
+Validation: npm test passes 5 tests (including the smoke suite); type check, CJS/ESM/type builds, playground build, and package dry-run pass. Runtime npm audit reports 0 vulnerabilities. Chrome checks cover dependent variables, display formatting, memory, and light/dark layouts at desktop and 390-pixel width.
+
+Release status: locally validated changes, not published. Numerical calculus still has no convergence estimate or accuracy controls; this is not a claim that all mathematical edge cases or feature requests are complete.
+
+Feature backlog status
+
+CAL-01 [P1; pass 1] Interactive function graphs with zoom, trace, roots, and intersections; turn a typed expression into something users can inspect.
+  OPEN — not implemented in this change.
+
+CAL-02 [P1; pass 1] Unit-aware calculations and conversions, including dimension checks that reject adding incompatible quantities.
+  OPEN — not implemented in this change.
+
+CAL-03 [P1; pass 1] Saved calculation notebooks with named sessions, searchable history, and export/import. Extends the current short in-memory history.
+  OPEN — not implemented in this change.
+
+CAL-04 [P1; pass 1] A named-variable panel with editable values and dependent results. The engine accepts variables, but the calculator UI exposes only the previous answer.
+  PARTIAL — named variables and ordered dependencies; changing a value requires recalculation.
+
+CAL-05 [P1; pass 1] Equation solving for one unknown, with a starting range and clearly reported failed convergence.
+  IMPLEMENTED — bounded bisection API/UI, residual diagnostics, explicit failed convergence and replayable history.
+
+CAL-06 [P2; pass 1] A reusable formula library with named inputs, descriptions, and examples.
+  OPEN — not implemented in this change.
+
+CAL-07 [P2; pass 1] Statistics mode for pasted datasets: count, mean, median, spread, percentiles, and a distribution chart.
+  OPEN — not implemented in this change.
+
+CAL-08 [P2; pass 1] Regression and curve fitting with residuals so users can judge the fit.
+  OPEN — not implemented in this change.
+
+CAL-09 [P2; pass 1] Matrix and vector operations with an editable grid for inputs.
+  OPEN — not implemented in this change.
+
+CAL-10 [P2; pass 1] Complex-number calculations with rectangular and polar display.
+  OPEN — not implemented in this change.
+
+CAL-11 [P2; pass 1] Exact fractions and a decimal/fraction toggle, with exact and approximate results clearly distinguished.
+  OPEN — not implemented in this change.
+
+CAL-12 [P2; pass 1] Programmer mode for binary, hexadecimal, bitwise operations, and selectable word sizes.
+  OPEN — not implemented in this change.
+
+CAL-13 [P1; pass 1] Result-format controls for decimal places, significant figures, and engineering notation.
+  IMPLEMENTED — fixed, scientific, engineering, automatic and significant-figure display, with UI precision controls and regression coverage.
+
+CAL-14 [P2; pass 1] Parameter sweeps that generate a value table and graph over a user-chosen range.
+  OPEN — not implemented in this change.
+
+CAL-15 [P2; pass 1] An expression explanation view showing parsed operations and intermediate results without inventing mathematical proof steps.
+  OPEN — not implemented in this change.
+
+CAL-16 [P1; pass 2] Numerical-calculus accuracy controls with tolerance, convergence/error estimates, and warnings for discontinuities. Extends the existing approximate derivative and definite integral.
+  OPEN — not implemented in this change.
+
+CAL-17 [P2; pass 2] Symbolic simplification, differentiation, and integration for an explicitly supported expression subset.
+  OPEN — not implemented in this change.
+
+CAL-18 [P2; pass 2] Editable calculation worksheets where later rows reference earlier results and recalculate when inputs change.
+  OPEN — not implemented in this change.
+
+CAL-19 [P2; pass 2] Standard memory controls and named memory registers independent of the existing Ans value.
+  PARTIAL — one memory register with MC/MR/M+/M−; no named register collection.
+
+CAL-20 [P1; pass 2] Copy controls for a result, full expression, or formatted calculation block.
+  PARTIAL — result and equation copy; no rich formatted-block clipboard export.
+
+CAL-21 [P2; pass 2] Comparison scenarios that keep several variable sets and show how the answer changes.
+  OPEN — not implemented in this change.
+
+CAL-22 [P2; pass 2] A host extension API for vetted custom functions and domain-specific constants, using the existing safe parser.
+  OPEN — not implemented in this change.
+
+CAL-23 [P3; pass 2] Unit-tested educational exercises with a revealed worked solution and adjustable difficulty, separate from ordinary calculator results.
+  OPEN — not implemented in this change.
+
+CAL-24 [P2; pass 3] Measurement uncertainty support: carry input tolerances through a calculation and show the resulting range.
+  OPEN — not implemented in this change.
+
+CAL-25 [P2; pass 3] A searchable constants catalog with unit, source, and editable user-defined constants.
+  OPEN — not implemented in this change.
+
+CAL-26 [P2; pass 3] Probability distributions with probability/quantile inputs and a shaded plot.
+  OPEN — not implemented in this change.
+
+CAL-27 [P2; pass 3] Live calculation payloads for host apps, preserving expression, variables, units, and settings so inserted results can be reopened and recalculated.
+  PARTIAL — payload retains variables, angle unit, format, and calculus inputs; host reopening and unit support remain.
+
+Review evidence
+
+The original findings and research remain in ../project-feature-backlog.txt. Browser runner: ../noteboard/qa/review.cjs. Local preview fixture: ../noteboard/tests/browser. Screenshots: ../noteboard/qa/artifacts. Those test artifacts are excluded from npm packages.
+
+The review loop reproduced failures, added regressions, applied focused fixes, and reran affected checks. Open and partial items above remain work; passing checks do not establish that no other bugs or useful features exist.
+
+12 October 2026 follow-up
+
+Integration and differentiation tokenize each expression once per operation instead of once per sample. Zero-width integrals now validate the expression. Added numerical validation regressions and a repeatable benchmark at qa/performance.cjs. Median for 100 integrations (601 samples each, five runs after warmup) fell from 125.9 ms to 36.9 ms on this machine; this is a local measurement, not a general performance guarantee.
+
+Root audit: 0 vulnerabilities. Playground audit: 2 high findings fixed with compatible dependency updates; 0 remaining. All 5 tests, package builds, playground build, package dry-run, and Chrome checks pass. Decorative comments removed. Remaining numerical accuracy work above is still open. See ../npm-package-review-2026-10-12.txt.
+
+12 October 2026 completion review
+
+This pass completes significant-figure formatting and makes history restore the original variable source, captured Ans, angle mode, format and calculus inputs. Invalid intermediate arithmetic now fails immediately, and numerical derivatives validate the function at the requested point. It does not add an error estimate or make numerical calculus exact.
+
+The full feature contracts, dependencies and completion criteria are in implementation-plan.txt. Existing OPEN/PARTIAL features remain unfinished. Final validation: npm test passes 7 tests, including TypeScript and CJS/ESM/declaration builds. npm run playground:build and npm pack --dry-run --json pass. Package and playground npm audit --json each report zero known vulnerabilities. Git diff --check passes. The tarball includes README.md, implementation-review.txt and implementation-plan.txt; development tests and browser artifacts remain excluded.
+
+Chrome: the shared qa/review.cjs suite passes, including collaboration, table editing, history, export, hostile input and narrow light/dark layouts. qa/completion-review.cjs passes calculator history/Ans/calculus replay, significant figures, preview navigation and source composition guards with no uncaught page errors. These commands run from the sibling noteboard repository against its local tests/browser fixture. Browser instructions are in noteboard/qa/README.txt.
+
+Added .github/workflows/ci.yml for package tests on Node 18/22/24, playground builds on Node 22/24, package dry-runs and dependency audits. The workflows have not executed on GitHub. Local execution used the installed Node runtime, not the complete matrix. Workflow references: https://github.com/actions/checkout and https://github.com/actions/setup-node.
+
+Existing uncommitted changes were retained. No package version, npm publication, deployment or Git commit was made during this review.
+
+12 October 2026 feature and playground review
+
+Added solveEquation and Engineering-mode range/tolerance controls. Root result payloads expose bounds, tolerance, residual and iterations; history restores them. Bracket, pole, flat-root, multiple-root and convergence-limit regressions pass. The solver returns one residual-qualified root for a caller-supplied continuous real function.
+
+Validation: package tests pass (calculator 9, document-editor 35, Noteboard 49; 93 total), with TypeScript checks and CJS/ESM/declaration builds. All three playground production builds and npm pack --dry-run --json pass. README and implementation docs are included in the archives. The shared Chrome review.cjs and completion-review.cjs suites pass. New qa/features-review.cjs covers actual playgrounds; qa/upload-review.cjs checks delayed uploads. No uncaught page errors were recorded. Noteboard light/dark desktop and 390-pixel layouts were captured and inspected. Tests use local Chrome, not a cross-browser or hosted-storage matrix.
+
+Implementation plans and README API examples match the current scope. OPEN/PARTIAL items remain unfinished. Dependencies were unchanged in this feature pass; the preceding audit results above apply.
+
+12 October 2026 security and correctness review loop
+
+Fixed endpoint root handling and literal Markdown labels/equations, including entities.
+
+Four passes: reproduce/fix, inspect fixes and adjacent paths, integration boundaries, and final scoped review. The last pass found no additional actionable issues. Calculator 11, document-editor 37 and Noteboard 56 tests pass (104 total), with package type/build checks and all playground builds. Chrome qa/security-review.cjs, qa/review.cjs, qa/upload-review.cjs, qa/interaction-review.cjs and qa/features-review.cjs pass. All six npm dependency audits report zero known vulnerabilities. Package dry runs contain intended runtime/docs only; diff whitespace checks pass.
+
+README documents the resulting behavior and limits. Server authorization and aggregate quotas, browser image decoding, cross-browser/device testing and sustained load remain outside this local review. No publication or Git commit was made. Full workspace evidence: ../npm-security-review-2026-10-12.txt.
+
+12 October 2026 visual spacing review
+
+Increased keypad and engineering-key target sizes, padded numerical fields and actions, placed all three numerical operations in one evenly sized row, and added visible keyboard focus rings. Expanded variable help has a readable line height.
+
+Validated at 320, 390, 768 and 1440 pixels in Chrome with qa/ui-layout-review.cjs. Checks cover page overflow, utility-control overlap, image-panel padding, six direct heading actions, preview controls and numerical-option alignment. Light/dark and mobile screenshots were inspected. Existing commands-review.cjs, interaction-review.cjs and features-review.cjs pass. Document-editor npm test passes 37 tests; all three playground production builds pass. Physical touch and other browsers were not tested.
+
+Final package review — 12 October 2026
+Removed implementation-plan.txt and preserved unfinished contracts in feature-backlog.txt. The backlog is not a release completion claim. Regression suites and playground production builds were repeated before the local commit. No npm publication or deployment was performed.

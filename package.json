@@ -36,12 +36,14 @@
     "dist",
     "styles.css",
     "README.md",
-    "LICENSE"
+    "LICENSE",
+    "implementation-review.txt",
+    "feature-backlog.txt"
   ],
   "scripts": {
     "build": "tsup ./src/index.tsx --format cjs,esm --dts --clean",
     "check": "tsc -p tsconfig.json --noEmit",
-    "test": "npm run build && node test/smoke.cjs",
+    "test": "npm run check && npm run build && node --test",
     "playground": "npm --prefix playground run dev",
     "playground:build": "npm --prefix playground run build",
     "prepublishOnly": "npm test"

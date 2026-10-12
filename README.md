@@ -112,3 +112,40 @@ differentiateExpression("x^3", "2"); // approximately 12
 ```
 
 Expressions are parsed without `eval`. Constants include `pi`, `e`, `tau`, and `phi`; supported functions include trigonometry, inverse and hyperbolic trigonometry, roots, logarithms, rounding, exponentials, absolute value, percentages, powers, factorials, variables, and implicit multiplication.
+
+## Equation solving
+
+Engineering mode includes **Solve f(x) = 0** under Numerical tools. Enter an expression, lower and upper bounds, and an absolute residual tolerance. Results show the residual and iteration count; history restores the solver inputs.
+
+```ts
+import { solveEquation } from "@sunaissu/calculator";
+
+const solution = solveEquation("x^2 - target", "0", "2", {
+  variables: { target: 2 },
+}, { tolerance: 1e-8, maxIterations: 100 });
+// solution: { value: approximately 1.41421356, residual, iterations }
+```
+
+The solver uses bounded bisection for real, continuous functions. Bounds must increase and bracket a sign change, unless an endpoint already meets the tolerance. It returns one root; it does not enumerate roots or find even-multiplicity roots without a sign change. Success means `abs(f(x)) <= tolerance`, not a bound on x error or proof of continuity. Invalid values, missing brackets, and exhausted iteration limits throw. Defaults are 1e-8 and 100 iterations; supported limits are tolerance greater than zero up to 1, and 1–1000 iterations.
+
+Host result handlers should handle the new `CalculationKind` value `"root"`. Its payload includes `context.lowerBound`, `context.upperBound` and `context.tolerance` and `diagnostics` with residual and iterations.
+
+## Variables, formatting, and memory
+
+Expand **Variables & display** to enter up to 50 variables as `name = expression`, one per line. Names may include digits and underscores after the first letter. Later rows can reference earlier rows. Built-in function names, constants, `mod`, and `ans` are reserved.
+
+`defaultVariables` seeds that panel. `defaultFormat={{ notation: "engineering", precision: 3 }}` seeds result formatting. Supported notations are `auto`, `fixed`, `scientific`, `engineering`, and `significant`. Fixed, scientific and engineering precision uses 0 to 12 decimal places; significant precision uses 1 to 12 significant figures. For example, `formatCalculatorResult(12, { notation: "significant", precision: 4 })` returns `"12.00"`. Formatting changes display, not the stored numeric answer.
+
+The calculator includes MC, MR, M+, M−, copy-result, and copy-equation controls. Memory and history last for the mounted session. Selecting history restores the original variables, captured Ans, angle mode, format and calculus inputs so pressing Evaluate reproduces that calculation. Changing a variable still requires evaluation; automatic dependent recalculation remains planned. Result payloads include evaluation context and calculus inputs so hosts can retain how a result was produced; reopening and recalculation remain host responsibilities.
+
+Engine-only consumers can call `evaluateVariables(source, context)` and `formatCalculatorResult(value, options)`. Invalid intermediate results, including division by zero or a square root outside the real domain, throw even if a later operation would hide them. Derivatives also reject a function that is undefined at the requested point. Calculus still uses numerical approximations and does not report an error bound or prove convergence.
+
+See [the implementation review](./implementation-review.txt) for measured results and [the feature backlog](./feature-backlog.txt) for all 27 feature contracts, dependencies and acceptance checks. OPEN and PARTIAL items are not implemented.
+
+## Development checks
+
+Run `npm test`, `npm run playground:build`, and `npm pack --dry-run --json` before release. The GitHub Actions workflow is configured to test the package on Node 18, 22 and 24, build the playground on Node 22/24, and audit both dependency trees. Browser checks remain a separate local step documented in the implementation review. The workflow has not been run on GitHub as part of this local review.
+
+## Review safeguards
+
+Document insertion escapes Markdown in labels and displayed equations, so underscores, multiplication signs written as asterisks, and brackets remain literal. The plain-text result is unchanged. The root solver returns immediately when the lower endpoint meets the residual tolerance; it does not evaluate the other endpoint in that case.
