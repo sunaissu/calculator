@@ -31,6 +31,8 @@ import {
   type CalculatorThemeMode,
 } from "./theme";
 
+import { PlotPanel } from "./PlotPanel";
+
 type CalculatorMode = "standard" | "engineering";
 type CalculusOperation = "integral" | "derivative" | "root";
 
@@ -483,6 +485,8 @@ export const Calculator: React.FC<CalculatorProps> = (props) => {
           {calculusSummary && currentResult && <output className="calculus-summary">{currentResult.displayExpression} = {displayedResult}</output>}
         </section>
       )}
+
+      <PlotPanel expression={expression} getContext={evaluationContext} />
 
       {currentResult?.diagnostics && <small role="status">Residual: {currentResult.diagnostics.residual.toExponential(2)} · {currentResult.diagnostics.iterations} iterations</small>}
       {target !== "standalone" && <button type="button" className="calculator-insert" onClick={insertResult} disabled={!canInsert}>↳ {insertLabel}</button>}

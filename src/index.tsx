@@ -45,3 +45,6 @@ export type {
 } from "./theme";
 
 export { Calculator as default } from "./Calculator";
+
+export { sampleExpression, parsePlotData, plotSvg, plotCsv } from "./plot";
+export type { PlotPoint, CalculatorPlot } from "./plot";

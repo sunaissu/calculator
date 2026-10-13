@@ -478,3 +478,17 @@
 .sunaissu-calculator-panel .calculator-options { padding:12px; }
 .sunaissu-calculator-panel .calculator-options small { font-size:12px; line-height:1.5; }
 .sunaissu-calculator-panel :is(button,summary,input,textarea,select):focus-visible { outline:2px solid var(--calculator-accent); outline-offset:2px; }
+
+.calculator-plot { margin-top: 1rem; }
+.calculator-plot p { font-size: .8rem; line-height: 1.5; color: var(--calculator-muted); margin: .75rem 0; }
+.calculator-plot figure { margin: 1rem 0 0; min-width: 0; }
+.calculator-plot figcaption { overflow-wrap: anywhere; font-size: .85rem; margin-bottom: .5rem; }
+.calculator-plot figcaption small { display: block; margin-top: .4rem; }
+.calculator-plot img { display: block; width: 100%; border-radius: .5rem; background: white; }
+.calculator-plot-actions, .calculator-plot-bounds { display: flex; gap: .5rem; flex-wrap: wrap; margin: .75rem 0; }
+.calculator-plot-bounds label { flex: 1 1 6rem; min-width: 0; }
+.calculator-plot button { color: var(--calculator-text); background: var(--calculator-surface-raised); border: 1px solid var(--calculator-border); border-radius: .4rem; padding: .5rem .65rem; font-size: .75rem; cursor: pointer; }
+.calculator-plot button[aria-pressed=true], .calculator-plot .calculator-plot-run { color: var(--calculator-accent-text); background: var(--calculator-accent); }
+.calculator-plot-table { max-height: 15rem; overflow: auto; overscroll-behavior: contain; }
+.calculator-plot-table table { width: 100%; border-collapse: collapse; font-size: .75rem; }
+.calculator-plot-table th, .calculator-plot-table td { padding: .4rem; border-bottom: 1px solid var(--calculator-border); text-align: right; overflow-wrap: anywhere; }
