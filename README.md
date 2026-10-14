@@ -1,3 +1,5 @@
+Release candidate details: [RELEASE.txt](./RELEASE.txt). This candidate has not been published.
+
 # @sunaissu/calculator
 
 A safe expression and numerical-calculus engine with a reusable React calculator. It includes separate adapters for inserting results into Markdown documents and canvas applications.
