@@ -3,6 +3,7 @@ import {
   type AngleUnit,
   type ResultFormat,
   evaluateVariables,
+  inspectVariables,
   type EvaluationContext,
   differentiateExpression,
   evaluateExpression,
@@ -211,6 +212,7 @@ export const Calculator: React.FC<CalculatorProps> = (props) => {
   const [calculusSummary, setCalculusSummary] = useState("");
 
   const formattedExpression = useMemo(() => formatDisplayExpression(expression), [expression]);
+  const variablePreview = useMemo(() => inspectVariables(variableSource, { angleUnit, variables: answer === null ? {} : { ans: answer } }), [variableSource, angleUnit, answer]);
   const evaluationContext = (): EvaluationContext => ({ angleUnit, variables: evaluateVariables(variableSource, { angleUnit, variables: answer === null ? {} : { ans: answer } }) });
   const displayedResult = currentResult ? formatCalculatorResult(currentResult.numericValue, resultFormat) : "0";
   const copyResult = async (full: boolean) => {
@@ -459,8 +461,12 @@ export const Calculator: React.FC<CalculatorProps> = (props) => {
       {copyStatus && <small role="status">{copyStatus}</small>}
       <details className="calculator-options">
         <summary>Variables & display{memory !== null ? " · Memory stored" : ""}</summary>
-        <label>Named variables<textarea rows={3} value={variableSource} placeholder={"length = 12\nwidth = length / 2"} onChange={event => { setVariableSource(event.target.value); clearPendingResult(); }} /></label>
+        <label>Named variables<textarea aria-label="Named variables" rows={3} value={variableSource} placeholder={"length = 12\nwidth = length / 2"} onChange={event => { setVariableSource(event.target.value); clearPendingResult(); }} /></label>
         <small>One name = expression per line. Later rows can use earlier variables.</small>
+        {variablePreview.length > 0 && <div className="calculator-variable-preview" role="region" aria-label="Variable values and errors" tabIndex={0}>
+          <small>Live variable preview. Evaluate to update the calculation result.</small>
+          <ul>{variablePreview.map(row => <li key={row.line}><span>Line {row.line}{row.name ? ` · ${row.name}` : ''}: </span>{row.error ? <span>Error: {row.error}</span> : <output>{formatCalculatorResult(row.value!, resultFormat)}</output>}</li>)}</ul>
+        </div>}
         <div className="calculator-format-row">
           <label>Notation<select value={resultFormat.notation ?? "auto"} onChange={event => setResultFormat({ ...resultFormat, notation: event.target.value as ResultFormat["notation"], precision: event.target.value === "significant" ? Math.max(1, resultFormat.precision ?? 6) : resultFormat.precision })}>
             {(["auto", "fixed", "scientific", "engineering", "significant"] as const).map(value => <option key={value}>{value}</option>)}
@@ -486,7 +492,7 @@ export const Calculator: React.FC<CalculatorProps> = (props) => {
         </section>
       )}
 
-      <PlotPanel expression={expression} getContext={evaluationContext} />
+      <PlotPanel expression={currentResult?.expression ?? expression} getContext={evaluationContext} />
 
       {currentResult?.diagnostics && <small role="status">Residual: {currentResult.diagnostics.residual.toExponential(2)} · {currentResult.diagnostics.iterations} iterations</small>}
       {target !== "standalone" && <button type="button" className="calculator-insert" onClick={insertResult} disabled={!canInsert}>↳ {insertLabel}</button>}

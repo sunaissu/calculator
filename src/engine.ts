@@ -392,6 +392,31 @@ export function differentiateExpression(
   return result;
 }
 
+export interface VariableDiagnostic {
+  line: number;
+  name?: string;
+  value?: number;
+  error?: string;
+}
+
+/** Preview ordered assignments without changing the caller's answer or variables. */
+export function inspectVariables(source: string, context: EvaluationContext = {}): VariableDiagnostic[] {
+  if (source.length > 100_000) return [{ line: 1, error: 'Variable input is too large to preview' }];
+  const rows = source.split(/\r?\n/).map((text, index) => ({ text, line: index + 1 })).filter(row => row.text.trim());
+  if (rows.length > 50) return [{ line: rows[50].line, error: 'Use at most 50 named variables' }];
+  let variables = { ...context.variables };
+  return rows.map(({text, line}) => {
+    const name = text.match(/^\s*([a-z][a-z0-9_]*)\s*=/i)?.[1].toLowerCase();
+    try {
+      variables = evaluateVariables(text, { ...context, variables });
+      return { line, name, value: variables[name!] };
+    } catch (error) {
+      if (name && name !== 'ans') delete variables[name];
+      return { line, name, error: error instanceof Error ? error.message : 'Invalid assignment' };
+    }
+  });
+}
+
 /** Variables are evaluated in order, allowing later rows to reference earlier rows. */
 export function evaluateVariables(source: string, context: EvaluationContext = {}): Record<string, number> {
   const variables = { ...context.variables };

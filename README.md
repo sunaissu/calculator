@@ -153,3 +153,7 @@ Document insertion escapes Markdown in labels and displayed equations, so unders
 Open Plot expression or data to sample a function of `x` using the current angle unit and named variables, or paste up to 1,000 rows of numeric `x,y` pairs. Restore a Recent calculation, then choose Use calculator expression to plot its saved expression and context. Each expression plot uses 201 samples; the `sampleExpression` API supports 2–501. Coordinates are bounded to ±1e12. Undefined and out-of-range samples are omitted. Dots deliberately remain unconnected so a pole is not drawn as a continuous curve.
 
 The graph, exact values table, SVG and CSV downloads describe the last explicit Draw plot action. Editing inputs does not relabel the previous graph. Plot state stays in the component and never invokes result or insertion callbacks. No storage, network calls or shared document state is involved. SVG exports contain escaped labels, numeric geometry and accessible descriptions; CSV contains numeric pairs only.
+
+## Live variable preview
+
+Variables & display shows each assignment's value or error as you edit, including dependent rows. Rows still evaluate from top to bottom; forward references and cycles produce errors. Previewing does not change Ans, memory, history, result callbacks or insertion callbacks. Press Evaluate to update the main result. The engine API `inspectVariables(source, context)` returns line numbers, names, values and errors, with a 50-assignment and 100,000-character preview limit.

@@ -492,3 +492,7 @@
 .calculator-plot-table { max-height: 15rem; overflow: auto; overscroll-behavior: contain; }
 .calculator-plot-table table { width: 100%; border-collapse: collapse; font-size: .75rem; }
 .calculator-plot-table th, .calculator-plot-table td { padding: .4rem; border-bottom: 1px solid var(--calculator-border); text-align: right; overflow-wrap: anywhere; }
+
+.calculator-variable-preview { max-height:12rem;overflow:auto;overscroll-behavior:contain;margin-top:8px;font-size:.8rem;line-height:1.5;overflow-wrap:anywhere; }
+.calculator-variable-preview ul { list-style:none;padding:0;margin:6px 0; }
+.calculator-variable-preview li { padding:6px 0;border-bottom:1px solid var(--calculator-border); }

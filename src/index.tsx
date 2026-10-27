@@ -2,11 +2,13 @@ export {
   differentiateExpression,
   evaluateExpression,
   evaluateVariables,
+  inspectVariables,
   formatCalculatorResult,
   integrateExpression,
   solveEquation,
 } from "./engine";
 export type { AngleUnit, EvaluationContext, ResultFormat, EquationSolverOptions, EquationSolution } from "./engine";
+export type { VariableDiagnostic } from "./engine";
 
 export {
   createCanvasCalculationInsert,
