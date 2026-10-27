@@ -1,5 +1,3 @@
-Release candidate details: [RELEASE.txt](./RELEASE.txt). This candidate has not been published.
-
 # @sunaissu/calculator
 
 A safe expression and numerical-calculus engine with a reusable React calculator. It includes separate adapters for inserting results into Markdown documents and canvas applications.
@@ -142,11 +140,9 @@ The calculator includes MC, MR, M+, M−, copy-result, and copy-equation control
 
 Engine-only consumers can call `evaluateVariables(source, context)` and `formatCalculatorResult(value, options)`. Invalid intermediate results, including division by zero or a square root outside the real domain, throw even if a later operation would hide them. Derivatives also reject a function that is undefined at the requested point. Calculus still uses numerical approximations and does not report an error bound or prove convergence.
 
-See [the implementation review](./implementation-review.txt) for measured results and [the feature backlog](./feature-backlog.txt) for all 27 feature contracts, dependencies and acceptance checks. OPEN and PARTIAL items are not implemented.
-
 ## Development checks
 
-Run `npm test`, `npm run playground:build`, and `npm pack --dry-run --json` before release. The GitHub Actions workflow is configured to test the package on Node 18, 22 and 24, build the playground on Node 22/24, and audit both dependency trees. Browser checks remain a separate local step documented in the implementation review. The workflow has not been run on GitHub as part of this local review.
+Run `npm test`, `npm run playground:build`, and `npm pack --dry-run --json` before release. The GitHub Actions workflow is configured to test the package on Node 18, 22 and 24, build the playground on Node 22/24, and audit both dependency trees. Run the browser checks in qa/ separately. The workflow has not been run on GitHub as part of this local review.
 
 ## Review safeguards
 

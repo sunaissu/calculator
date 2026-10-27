@@ -36,10 +36,7 @@
     "dist",
     "styles.css",
     "README.md",
-    "LICENSE",
-    "implementation-review.txt",
-    "feature-backlog.txt",
-    "RELEASE.txt"
+    "LICENSE"
   ],
   "scripts": {
     "build": "tsup ./src/index.tsx --format cjs,esm --dts --clean",
