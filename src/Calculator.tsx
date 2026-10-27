@@ -33,6 +33,7 @@ import {
 } from "./theme";
 
 import { PlotPanel } from "./PlotPanel";
+import { getCalculatorScrollbarProps, type CalculatorScrollbarOptions } from "./scrollbar";
 
 type CalculatorMode = "standard" | "engineering";
 type CalculusOperation = "integral" | "derivative" | "root";
@@ -67,6 +68,8 @@ interface CommonCalculatorProps {
   themeOverrides?: Partial<CalculatorTheme>;
   /** Primary drives actions/results; secondary drives functions and supporting accents. */
   brandColors?: CalculatorBrandColors;
+  /** Style this calculator's scrollbars. Omit for native browser styling. */
+  scrollbar?: CalculatorScrollbarOptions;
   onThemeChange?: (theme: CalculatorThemeMode) => void;
   showThemeSwitcher?: boolean;
   appearance?: "panel" | "app";
@@ -172,12 +175,14 @@ export const Calculator: React.FC<CalculatorProps> = (props) => {
     defaultTheme = "system",
     themeOverrides,
     brandColors,
+    scrollbar,
     onThemeChange,
     showThemeSwitcher = false,
     appearance = "panel",
     style,
   } = props;
   const target = props.target ?? "standalone";
+  const scrollbarProps = getCalculatorScrollbarProps(scrollbar);
   const [internalTheme, setInternalTheme] = useState<CalculatorThemeMode>(defaultTheme);
   const themeMode = props.theme ?? internalTheme;
   const resolvedThemeMode = useCalculatorResolvedTheme(themeMode);
@@ -408,7 +413,8 @@ export const Calculator: React.FC<CalculatorProps> = (props) => {
       aria-label={title}
       data-theme={resolvedThemeMode}
       data-theme-mode={themeMode}
-      style={{ ...getCalculatorThemeStyle(themeTokens), ...style }}
+      data-calculator-scrollbar={scrollbarProps["data-calculator-scrollbar"]}
+      style={{ ...getCalculatorThemeStyle(themeTokens), ...scrollbarProps.style, ...style }}
     >
       <div className="sunaissu-calculator-heading">
         <div className="sunaissu-calculator-heading-copy">

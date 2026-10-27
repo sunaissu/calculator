@@ -50,3 +50,6 @@ export { Calculator as default } from "./Calculator";
 
 export { sampleExpression, parsePlotData, plotSvg, plotCsv } from "./plot";
 export type { PlotPoint, CalculatorPlot } from "./plot";
+
+export { getCalculatorScrollbarProps, getCalculatorScrollbarStyle } from "./scrollbar";
+export type { CalculatorScrollbarOptions } from "./scrollbar";

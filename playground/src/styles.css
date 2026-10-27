@@ -19,13 +19,19 @@ body {
 }
 
 button,
-input {
+input,
+select {
   font: inherit;
+}
+
+.calculator-playground-scroll {
+  height: 100dvh;
+  overflow: auto;
 }
 
 .calculator-playground {
   width: min(420px, 100%);
-  min-height: 100vh;
+  min-height: 100%;
   margin: 0 auto;
   padding: clamp(1.25rem, 5vw, 3rem) 0;
   display: flex;
@@ -58,6 +64,66 @@ input {
   font-size: 0.8rem;
 }
 
+.playground-scrollbar-settings {
+  margin: 0 1rem 1rem;
+  border: 1px solid #ccd5df;
+  border-radius: 0.75rem;
+  font-size: 0.8rem;
+}
+
+.playground-scrollbar-settings summary {
+  min-height: 44px;
+  padding: 0.85rem;
+  cursor: pointer;
+}
+
+.playground-scrollbar-controls {
+  display: grid;
+  gap: 0.5rem;
+  padding: 0 0.85rem 0.85rem;
+}
+
+.playground-scrollbar-controls label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  min-height: 44px;
+}
+
+.playground-scrollbar-controls select,
+.playground-scrollbar-controls input[type="color"] {
+  min-height: 44px;
+  border: 1px solid #ccd5df;
+  border-radius: 0.4rem;
+  color: inherit;
+  background: #fff;
+}
+
+.playground-scrollbar-controls select {
+  padding: 0.5rem;
+}
+
+.playground-scrollbar-controls input[type="color"] {
+  width: 64px;
+  padding: 0.3rem;
+}
+
+.playground-scrollbar-controls input:disabled {
+  opacity: 0.4;
+}
+
+.playground-scrollbar-controls .playground-scrollbar-checkbox {
+  justify-content: flex-start;
+}
+
+.playground-scrollbar-checkbox input {
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  accent-color: #0f9f76;
+}
+
 @media (prefers-color-scheme: dark) {
   :root {
     color: #e8edf4;
@@ -72,6 +138,18 @@ input {
 
   .playground-heading p {
     color: #8b96a6;
+  }
+
+  .playground-scrollbar-settings,
+  .playground-scrollbar-controls select,
+  .playground-scrollbar-controls input[type="color"] {
+    border-color: #343e4d;
+  }
+
+  .playground-scrollbar-controls select,
+  .playground-scrollbar-controls input[type="color"] {
+    background: #151b24;
+    color-scheme: dark;
   }
 }
 

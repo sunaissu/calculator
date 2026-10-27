@@ -59,7 +59,40 @@ Every calculator accepts `theme="light"`, `theme="dark"`, or `theme="system"` (t
 
 The primary color drives results, active controls, and main actions. The secondary color drives engineering functions and supporting actions. Light/dark/system still controls all neutral surfaces and readable text colors.
 
+In the playground, open Appearance to choose Default, Ocean, Forest, Plum, or custom primary and secondary colors. The calculator's Auto, Light, and Dark buttons control its theme.
+
 Use `themeOverrides` only when individual semantic tokens need more precise control. `CALCULATOR_LIGHT_THEME`, `CALCULATOR_DARK_THEME`, and `applyCalculatorBrandColors` are exported for complete custom presets. Plain CSS variable overrides such as `--calculator-accent` are also supported.
+
+## Scrollbars
+
+Every calculator accepts a `scrollbar` prop for its scrollable areas. Set the thumb and track colors independently. A thumb color alone gives a transparent track; a track color alone uses `currentColor` for the thumb. Use `"transparent"` to remove the track color:
+
+```tsx
+<CalculatorApp scrollbar={{ thumbColor: "#8b5cf6", trackColor: "transparent", width: "thin" }} />
+```
+
+Set `scrollbar={{ width: "none" }}` to hide scrollbars while keeping scrolling enabled. Omit the prop, or pass `undefined`, to restore native scrollbars. The default width is `"auto"`.
+
+Fallback compatibility: Playwright's WebKit 27.2 build on Windows did not reliably repaint when switching from native to custom scrollbar colors after mount. Initial custom colors rendered correctly. Chrome passed live changes.
+
+For a scroll container owned by your application, spread `getCalculatorScrollbarProps` onto that element. This supplies the class, style variables, and browser fallback attributes. The container needs a height and `overflow: "auto"`:
+
+```tsx
+import { CalculatorApp, getCalculatorScrollbarProps } from "@sunaissu/calculator";
+
+const scrollbar = { thumbColor: "#8b5cf6", trackColor: "transparent" };
+const scrollProps = getCalculatorScrollbarProps(scrollbar);
+
+<div
+  {...scrollProps}
+  role="region"
+  aria-label="Calculator"
+  tabIndex={0}
+  style={{ ...scrollProps.style, height: "100dvh", overflow: "auto" }}
+>
+  <CalculatorApp scrollbar={scrollbar} />
+</div>
+```
 
 ## Document calculator
 
@@ -142,7 +175,7 @@ Engine-only consumers can call `evaluateVariables(source, context)` and `formatC
 
 ## Development checks
 
-Run `npm test`, `npm run playground:build`, and `npm pack --dry-run --json` before release. The GitHub Actions workflow is configured to test the package on Node 18, 22 and 24, build the playground on Node 22/24, and audit both dependency trees. Run the browser checks in qa/ separately. The workflow has not been run on GitHub as part of this local review.
+Run `npm test`, `npm run playground:build`, and `npm pack --dry-run --json` before release. The GitHub Actions workflow tests the package on Node 18, 22 and 24, builds the playground on Node 22/24, and audits both dependency trees. Check browser interactions separately with `npm run playground`.
 
 ## Review safeguards
 
