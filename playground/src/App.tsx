@@ -1,3 +1,5 @@
+import sunaissuMark from "../../assets/brand/sunaissu-light.svg";
+import bgMark from "../../assets/brand/bg-light.svg";
 import { useState } from "react";
 import {
   CalculatorApp,
@@ -89,6 +91,7 @@ export default function App() {
         </details>
 
         <CalculatorApp defaultTheme="system" brandColors={brandColors} scrollbar={scrollbar} />
+      <footer className="maker-credit"><span>Made by</span><img className="maker-wordmark" src={sunaissuMark} alt="Sunaissu" width="81" height="26" /><img className="maker-monogram" src={bgMark} alt="bg_" width="26" height="13" /></footer>
       </main>
     </div>
   );

@@ -1,5 +1,7 @@
 # @sunaissu/calculator
 
+<p><img src="assets/brand/sunaissu.svg" alt="Sunaissu" width="104"></p>
+
 A safe expression and numerical-calculus engine with a reusable React calculator. It includes separate adapters for inserting results into Markdown documents and canvas applications.
 
 ## Install

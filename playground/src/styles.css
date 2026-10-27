@@ -159,3 +159,8 @@ select {
     justify-content: flex-start;
   }
 }
+
+.maker-credit { display:flex; flex-wrap:wrap; align-items:center; gap:12px; margin-top:24px; padding:18px 16px; color:#64748b; font-size:12px; }
+.maker-credit img { display:block; flex-shrink:0; object-fit:contain; }
+.maker-wordmark { width:81px; height:26px; }
+.maker-monogram { width:26px; height:13px; opacity:.65; }

@@ -40,7 +40,8 @@
     "dist",
     "styles.css",
     "README.md",
-    "LICENSE"
+    "LICENSE",
+    "assets/brand"
   ],
   "scripts": {
     "build": "tsup ./src/index.tsx --format cjs,esm --dts --clean",
