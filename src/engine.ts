@@ -257,10 +257,14 @@ export function solveEquation(
   if (lower >= upper) throw new Error("Lower bound must be less than upper bound");
   const tokens = tokenize(expression);
   const at = (x: number) => evaluateTokens(tokens, { ...context, variables: { ...context.variables, x } });
-  let left = at(lower);
-  if (Math.abs(left) <= tolerance) return { value: lower, residual: left, iterations: 0 };
+  let left: number | undefined;
+  let lowerError: unknown;
+  try { left = at(lower); } catch (error) { lowerError = error; }
+  if (left !== undefined && Math.abs(left) <= tolerance) return { value: lower, residual: left, iterations: 0 };
   const right = at(upper);
   if (Math.abs(right) <= tolerance) return { value: upper, residual: right, iterations: 0 };
+  // Either endpoint can be a root even when the opposite endpoint is undefined.
+  if (left === undefined) throw lowerError;
   if (Math.sign(left) === Math.sign(right)) throw new Error("Choose bounds where f(x) changes sign");
   for (let iterations = 1; iterations <= limit; iterations++) {
     const middle = lower / 2 + upper / 2;
@@ -296,6 +300,30 @@ export function formatCalculatorResult(value: number, options: ResultFormat = {}
   return Number(value.toPrecision(12)).toString();
 }
 
+// Powers of two preserve precision while bringing finite samples into a safe range.
+function sampleScale(values: number[]): number {
+  const largest = Math.max(...values.map(Math.abs));
+  return largest === 0 ? 1 : 2 ** Math.max(-1022, Math.min(1023, Math.floor(Math.log2(largest))));
+}
+
+// Avoid overflow/underflow in intermediate products when the final product is finite.
+function scaledProduct(...factors: number[]): number {
+  if (factors.some(value => value === 0)) return 0;
+  let mantissa = 1, exponent = 0;
+  for (const value of factors) {
+    const shift = Math.max(-1022, Math.min(1023, Math.floor(Math.log2(Math.abs(value)))));
+    mantissa *= value / 2 ** shift;
+    exponent += shift;
+  }
+  while (Math.abs(mantissa) >= 2) { mantissa /= 2; exponent++; }
+  while (Math.abs(mantissa) < 1) { mantissa *= 2; exponent--; }
+  if (exponent > 1023) return Math.sign(mantissa) * Infinity;
+  if (exponent < -1075) return Math.sign(mantissa) * 0;
+  return exponent < -1022
+    ? (mantissa * 2 ** -1022) * 2 ** (exponent + 1022)
+    : mantissa * 2 ** exponent;
+}
+
 /** Numerically evaluate a definite integral using Simpson's rule. */
 export function integrateExpression(
   expression: string,
@@ -308,7 +336,9 @@ export function integrateExpression(
 
   const tokens = tokenize(expression);
   const intervals = 600;
-  const step = (upperBound - lowerBound) / intervals;
+  const span = upperBound - lowerBound;
+  const spanScale = Number.isFinite(span) ? span : upperBound / 2 - lowerBound / 2;
+  const spanMultiplier = Number.isFinite(span) ? 1 : 2;
   const evaluateAt = (x: number) =>
     evaluateTokens(tokens, {
       ...context,
@@ -316,11 +346,23 @@ export function integrateExpression(
     });
 
   if (lowerBound === upperBound) { evaluateAt(lowerBound); return 0; }
-  let weightedSum = evaluateAt(lowerBound) + evaluateAt(upperBound);
-  for (let index = 1; index < intervals; index += 1) {
-    weightedSum += (index % 2 === 0 ? 2 : 4) * evaluateAt(lowerBound + index * step);
+  const values = Array.from({ length: intervals + 1 }, (_, index) => evaluateAt(
+    index <= intervals / 2
+      ? lowerBound + spanScale * ((index / intervals) * spanMultiplier)
+      : upperBound - spanScale * (((intervals - index) / intervals) * spanMultiplier),
+  ));
+  const scale = sampleScale(values);
+  let weightedSum = 0, correction = 0;
+  // Pair symmetric samples and compensate the sum to retain small contributions.
+  for (let index = 0; index <= intervals / 2; index++) {
+    const pair = values[index] / scale + (index < intervals / 2 ? values[intervals - index] / scale : 0);
+    const term = (index === 0 ? 1 : index % 2 === 0 ? 2 : 4) * pair;
+    const next = weightedSum + term;
+    correction += Math.abs(weightedSum) >= Math.abs(term)
+      ? (weightedSum - next) + term : (term - next) + weightedSum;
+    weightedSum = next;
   }
-  const result = (step / 3) * weightedSum;
+  const result = scaledProduct(weightedSum + correction, 1 / (3 * intervals), scale, spanScale, spanMultiplier);
   if (!Number.isFinite(result)) throw new Error("Integral is not finite");
   return result;
 }
@@ -341,12 +383,11 @@ export function differentiateExpression(
     });
   // A symmetric stencil alone can hide an undefined value at the evaluation point.
   evaluateAt(point);
-  const result =
-    (-evaluateAt(point + 2 * step) +
-      8 * evaluateAt(point + step) -
-      8 * evaluateAt(point - step) +
-      evaluateAt(point - 2 * step)) /
-    (12 * step);
+  const values = [point + 2 * step, point + step, point - step, point - 2 * step].map(evaluateAt);
+  const scale = sampleScale(values);
+  const [outerRight, innerRight, innerLeft, outerLeft] = values.map(value => value / scale);
+  const difference = 8 * (innerRight - innerLeft) - (outerRight - outerLeft);
+  const result = scaledProduct(difference, 1 / 12, scale, 1 / step);
   if (!Number.isFinite(result)) throw new Error("Derivative is not finite");
   return result;
 }

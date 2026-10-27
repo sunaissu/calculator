@@ -146,7 +146,7 @@ Run `npm test`, `npm run playground:build`, and `npm pack --dry-run --json` befo
 
 ## Review safeguards
 
-Document insertion escapes Markdown in labels and displayed equations, so underscores, multiplication signs written as asterisks, and brackets remain literal. The plain-text result is unchanged. The root solver returns immediately when the lower endpoint meets the residual tolerance; it does not evaluate the other endpoint in that case.
+Document insertion escapes Markdown in labels and displayed equations, so underscores, multiplication signs written as asterisks, and brackets remain literal. The plain-text result is unchanged. The root solver accepts an endpoint that meets the residual tolerance even when the opposite endpoint is undefined.
 
 ## Private plots
 

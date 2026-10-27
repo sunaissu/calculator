@@ -28,3 +28,9 @@ test('a root at the lower endpoint does not evaluate an unrelated singular endpo
  const {solveEquation} = require('../dist/index.js');
  assert.deepEqual(solveEquation('(x-1)/(x-2)','1','2'),{value:1,residual:-0,iterations:0});
 });
+
+test('a root at the upper endpoint survives an unrelated singular lower endpoint', () => {
+ assert.deepEqual(solveEquation('(x-3)/(x-2)', '2', '3'), {value:3,residual:0,iterations:0});
+ assert.throws(() => solveEquation('1/(x-2)', '2', '3'), /finite/);
+ assert.throws(() => solveEquation('1/((x-2)*(x-3))', '2', '3'), /finite/);
+});
