@@ -190,3 +190,16 @@ The graph, exact values table, SVG and CSV downloads describe the last explicit 
 ## Live variable preview
 
 Variables & display shows each assignment's value or error as you edit, including dependent rows. Rows still evaluate from top to bottom; forward references and cycles produce errors. Previewing does not change Ans, memory, history, result callbacks or insertion callbacks. Press Evaluate to update the main result. The engine API `inspectVariables(source, context)` returns line numbers, names, values and errors, with a 50-assignment and 100,000-character preview limit.
+
+## Public documentation and discovery
+
+The deployed playground includes `/guide.html` with installation, use cases and
+host responsibilities, plus `/product.txt` as a plain-text reference. Set
+`SITE_ORIGIN` to the final HTTPS origin without a trailing slash when running
+`npm run playground:build`. Publish `playground/dist`. Without an origin, the
+generated pages request no indexing. Install both root and playground dependencies
+for a clean build; keep the repository source alongside the playground.
+
+The playground reflects this source checkout, which may be newer than npm. The
+package retains its existing name and dist-tag; discovery changes do not publish
+a release or rename imports.

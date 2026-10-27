@@ -1,0 +1,49 @@
+{
+  "name": "Calculator",
+  "title": "React engineering calculator with document and canvas adapters",
+  "description": "A React calculator for expressions and numerical calculus, with adapters that insert results into documents and canvases.",
+  "packageName": "@sunaissu/calculator",
+  "output": "playground/dist",
+  "mainMetadata": true,
+  "sections": [
+    {
+      "heading": "What does it do?",
+      "paragraphs": [
+        "Use CalculatorApp for a standalone calculator, or embed Calculator, DocumentCalculator and CanvasCalculator in a React interface."
+      ]
+    },
+    {
+      "heading": "How do I install it?",
+      "paragraphs": [
+        "Install the package and import its stylesheet once. React and React DOM 18 or newer are peer dependencies."
+      ],
+      "code": "npm install @sunaissu/calculator\nimport { CalculatorApp } from \"@sunaissu/calculator\";\nimport \"@sunaissu/calculator/styles.css\";\n<CalculatorApp defaultTheme=\"system\" />"
+    },
+    {
+      "heading": "Does it require a backend?",
+      "paragraphs": [
+        "The calculator runs in the browser. Your application controls storage and any document or canvas integration."
+      ]
+    },
+    {
+      "heading": "Which version does the playground show?",
+      "paragraphs": [
+        "The playground imports this repository's source. It can include changes newer than the published npm package. Check npm dist-tags before choosing a stable or prerelease version."
+      ]
+    }
+  ],
+  "links": [
+    {
+      "label": "npm package",
+      "url": "https://www.npmjs.com/package/@sunaissu/calculator"
+    },
+    {
+      "label": "Source repository",
+      "url": "https://github.com/sunaissu/calculator"
+    },
+    {
+      "label": "Installation and API documentation",
+      "url": "https://github.com/sunaissu/calculator#readme"
+    }
+  ]
+}
